@@ -1,0 +1,91 @@
+[tool.poetry]
+name = "quantfund"
+version = "0.1.0"
+description = "Sistema de Trading Quantitativo VALE3/Minério de Ferro"
+authors = ["QuantFund"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.0"
+numpy = "^1.24"
+supabase = "^2.0"
+psycopg2-binary = "^2.9"
+yfinance = "^0.2.28"
+requests = "^2.31"
+beautifulsoup4 = "^4.12"
+lxml = "^4.9"
+statsmodels = "^0.14"
+scipy = "^1.11"
+scikit-learn = "^1.3"
+APScheduler = "^3.10"
+python-telegram-bot = "^20.0"
+loguru = "^0.7"
+python-dotenv = "^1.0"
+streamlit = "^1.30"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.0"
+ruff = "^0.1"
+mypy = "^1.5"
+pre-commit = "^3.5"
+pytest = "^7.4"
+pytest-cov = "^4.1"
+pytest-asyncio = "^0.21"
+pandas-stubs = "^2.0"
+types-requests = "^2.31"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=term-missing"

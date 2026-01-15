@@ -1,0 +1,49 @@
+# ===========================================
+# QUANTFUND - Dependencies
+# ===========================================
+
+# Core
+pandas>=2.0
+numpy>=1.24
+
+# Database (Supabase)
+supabase>=2.0
+psycopg2-binary>=2.9
+
+# Broker (Clear MT5) - Windows only
+MetaTrader5>=5.0.45
+
+# Data Collection
+yfinance>=0.2.28
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=4.9
+
+# Analysis & Statistics
+statsmodels>=0.14
+scipy>=1.11
+scikit-learn>=1.3
+
+# Operations
+APScheduler>=3.10
+python-telegram-bot>=20.0
+loguru>=0.7
+python-dotenv>=1.0
+
+# Dashboard
+streamlit>=1.30
+
+# Development
+black>=23.0
+ruff>=0.1
+mypy>=1.5
+pre-commit>=3.5
+
+# Testing
+pytest>=7.4
+pytest-cov>=4.1
+pytest-asyncio>=0.21
+
+# Type stubs
+pandas-stubs>=2.0
+types-requests>=2.31
