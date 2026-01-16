@@ -11,9 +11,10 @@ supabase>=2.0
 psycopg2-binary>=2.9
 
 # Broker (Clear MT5) - Windows only
-MetaTrader5>=5.0.45
+# MetaTrader5>=5.0.45  # Instalar apenas no Windows: pip install MetaTrader5
 
 # Data Collection
+lseg-data>=1.0
 yfinance>=0.2.28
 requests>=2.31
 beautifulsoup4>=4.12

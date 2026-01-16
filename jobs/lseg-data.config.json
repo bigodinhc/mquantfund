@@ -1,0 +1,24 @@
+{
+    "sessions": {
+        "default": "platform.ldp",
+        "platform": {
+            "ldp": {
+                "app-key": "a9ef97121df34371a4f6d19a146ae6e3b4c5f128",
+                "username": "antonio@mineralstrading.com.br",
+                "password": "Abencoado0505()",
+                "signon_control": true
+            }
+        }
+    },
+    "logs": {
+        "level": "warning",
+        "transports": {
+            "console": {
+                "enabled": true
+            },
+            "file": {
+                "enabled": false
+            }
+        }
+    }
+}

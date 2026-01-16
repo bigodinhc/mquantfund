@@ -1,0 +1,142 @@
+# GitHub Actions: Coleta de dados em tempo real (FASE 2)
+# Este workflow só deve ser ativado após decisão GO no Gate da Semana 2.
+#
+# Schedule: A cada 15 minutos na janela crítica (08:00-11:00 BRT / 11:00-14:00 UTC)
+# Uso de minutos: ~36 min/dia = ~800 min/mês (dentro do free tier de 2000 min)
+
+name: Collect Realtime Data
+
+on:
+  schedule:
+    # Janela crítica: 11:00-14:00 UTC (08:00-11:00 BRT)
+    # A cada 15 minutos, de segunda a sexta
+    - cron: '*/15 11-14 * * 1-5'
+
+  # Permitir execução manual para testes
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Collection mode'
+        required: true
+        default: 'realtime'
+        type: choice
+        options:
+          - realtime
+          - test
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+  LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+  LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  # ============================================
+  # Coleta de Dados em Tempo Real
+  # ============================================
+  collect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Collect realtime data (LSEG)
+        run: |
+          python jobs/scripts/collect_all.py --mode realtime
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Log collection time
+        run: |
+          echo "Collection completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+  # ============================================
+  # Geração e Verificação de Sinais
+  # ============================================
+  check-signals:
+    needs: collect
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate and check signals
+        run: |
+          python -m src.strategy.signal_generator
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Log signal check time
+        run: |
+          echo "Signal check completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+  # ============================================
+  # Notificação de Erros
+  # ============================================
+  notify-on-failure:
+    needs: [collect, check-signals]
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send failure notification
+        if: env.TELEGRAM_BOT_TOKEN != ''
+        run: |
+          python -c "
+          import asyncio
+          from telegram import Bot
+          import os
+
+          async def send():
+              bot = Bot(token=os.environ['TELEGRAM_BOT_TOKEN'])
+              await bot.send_message(
+                  chat_id=os.environ['TELEGRAM_CHAT_ID'],
+                  text='⚠️ *QuantFund Alert*\n\nColeta realtime falhou!\nVerifique os logs no GitHub Actions.',
+                  parse_mode='Markdown'
+              )
+
+          asyncio.run(send())
+          "
+        env:
+          PYTHONPATH: ${{ github.workspace }}

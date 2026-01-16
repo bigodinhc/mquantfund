@@ -1,0 +1,157 @@
+# GitHub Actions: Tarefas diárias do QuantFund
+# Executa backfill, relatórios e manutenção
+
+name: Daily Tasks
+
+on:
+  schedule:
+    # Backfill de dados - 06:00 UTC (03:00 BRT)
+    - cron: '0 6 * * 1-5'
+    # Relatório diário - 22:00 UTC (19:00 BRT)
+    - cron: '0 22 * * 1-5'
+    # Recálculo semanal - Domingo 08:00 UTC
+    - cron: '0 8 * * 0'
+
+  # Permitir execução manual
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backfill
+          - daily-report
+          - weekly-analysis
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  # ============================================
+  # Backfill de Dados Históricos
+  # ============================================
+  backfill:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 6 * * 1-5' || github.event.inputs.task == 'backfill' || github.event.inputs.task == 'all'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backfill script
+        run: |
+          python -m src.data.backfill --days 1
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Log result
+        if: always()
+        run: |
+          echo "Backfill completed at $(date -u)"
+
+  # ============================================
+  # Relatório Diário
+  # ============================================
+  daily-report:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 22 * * 1-5' || github.event.inputs.task == 'daily-report' || github.event.inputs.task == 'all'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate daily report
+        run: |
+          python -m src.reports.daily_report
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Send Telegram notification
+        if: env.TELEGRAM_BOT_TOKEN != ''
+        run: |
+          python -m src.notifications.telegram_bot --send-daily-report
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+  # ============================================
+  # Análise Semanal (Correlação, Performance)
+  # ============================================
+  weekly-analysis:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * 0' || github.event.inputs.task == 'weekly-analysis' || github.event.inputs.task == 'all'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run weekly analysis
+        run: |
+          python -m src.analysis.weekly_correlation
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Update metrics in Supabase
+        run: |
+          python -m src.metrics.update_weekly
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+  # ============================================
+  # Health Check
+  # ============================================
+  health-check:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [backfill, daily-report, weekly-analysis]
+
+    steps:
+      - name: Check job status
+        run: |
+          echo "Backfill: ${{ needs.backfill.result }}"
+          echo "Daily Report: ${{ needs.daily-report.result }}"
+          echo "Weekly Analysis: ${{ needs.weekly-analysis.result }}"
+
+      - name: Notify on failure
+        if: contains(needs.*.result, 'failure')
+        run: |
+          echo "One or more jobs failed!"
+          # TODO: Enviar alerta via Telegram
